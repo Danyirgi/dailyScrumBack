@@ -11,44 +11,117 @@ use Tymon\JWTAuth\Exceptions\JWTException;
 
 class LoginController extends Controller
 {
-    public function login(Request $request){
-        $credentials = $request->only('email', 'password');
+    public function index()
+    {
+        $data["count"] = User::count();
+        $user = array();
 
-        try {
-            if(!$token = JWTAuth::attempt($credentials)){
-                return response()->json([
-                    'logged'  =>  false,
-                    'message' =>  'Invalid Email and Password'
-                ]);
-            }
-        } catch(JWTException $e){
-            return response()->json([
-                'logged'   =>  false,
-                'message'  =>  'Generate Token Failed'
-            ]);
+        foreach (User::all() as $p) {
+            $item = [
+                "id"          => $p->id,
+                "firstname"        => $p->firstname,
+                "lastname"        => $p->lastname,
+                "email"    	  => $p->email,
+                "created_at"  => $p->created_at,
+                "updated_at"  => $p->updated_at
+            ];
+
+            array_push($user, $item);
         }
-
-        return response()->json([
-            "logged"   => true,
-            "token"    => $token,
-            "message"  => "Login Berhasil"
-        ]);
+        $data["user"] = $user;
+        $data["status"] = 1;
+        return response($data);
     }
+    public function getAll($limit = 10, $offset = 0){
+        $data["count"] = User::count();
+        $user = array();
+
+        foreach (User::take($limit)->skip($offset)->get() as $p) {
+            $item = [
+                "id"          => $p->id,
+                "firstname"        => $p->firstname,
+                "lastname"        => $p->lastname,
+                "email"    	  => $p->email,
+                "created_at"  => $p->created_at,
+                "updated_at"  => $p->updated_at
+            ];
+            array_push($user, $item);
+        }
+        $data["user"] = $user;
+        $data["status"] = 1;
+        return response($data);
+    }
+    public function login(Request $request){
+		$credentials = $request->only('email', 'password');
+
+		try {
+			if(!$token = JWTAuth::attempt($credentials)){
+				return response()->json([
+						'logged' 	=>  false,
+						'message' 	=> 'Invalid email and password'
+					]);
+			}
+		} catch(JWTException $e){
+			return response()->json([
+						'logged' 	=> false,
+						'message' 	=> 'Generate Token Failed'
+					]);
+		}
+
+		return response()->json([
+					"logged"    => true,
+                    "token"     => $token,
+                    "message" 	=> 'Login berhasil'
+		]);
+	}
+
+    public function LoginCheck(){
+		try {
+			if(!$user = JWTAuth::parseToken()->authenticate()){
+				return response()->json([
+						'auth' 		=> false,
+						'message'	=> 'Invalid token'
+					]);
+			}
+		} catch (Tymon\JWTAuth\Exceptions\TokenExpiredException $e){
+			return response()->json([
+						'auth' 		=> false,
+						'message'	=> 'Token expired'
+					], $e->getStatusCode());
+		} catch (Tymon\JWTAuth\Exceptions\TokenInvalidException $e){
+			return response()->json([
+						'auth' 		=> false,
+						'message'	=> 'Invalid token'
+					], $e->getStatusCode());
+		} catch (Tymon\JWTAuth\Exceptions\JWTException $e){
+			return response()->json([
+						'auth' 		=> false,
+						'message'	=> 'Token absent'
+					], $e->getStatusCode());
+		}
+
+		 return response()->json([
+		 		"auth"      => true,
+                "user"    => $user
+		 ], 201);
+	}
 
 	public function register(Request $request)
 	{
-		// $validator = Validator::make($request->all(), [
-        //     'name'            => 'required|string|max:255',
-		// 	'email'           => 'required|string|email|max:255|unique:users',
-        //     'password'        => 'required|string|min:6',
-		// ]);
+		$validator = Validator::make($request->all(), [
+			'firstname' => 'required|string|max:255',
+			'lastname' => 'required|string|max:255',
+			'email' => 'required|string|email|max:255|unique:User',
+			'password' => 'required|string|min:6',
+			'password_verify' => 'required|string|min:6',
+		]);
 
-		// if($validator->fails()){
-		// 	return response()->json([
-		// 		'status'	=> 0,
-		// 		'message'	=> $validator->errors()->toJson()
-		// 	]);
-		// }
+		if($validator->fails()){
+			return response()->json([
+				'status'	=> 0,
+				'message'	=> $validator->errors()
+			]);
+		}
 
 		$user = new User();
         $user->firstname 	        = $request->firstname;
